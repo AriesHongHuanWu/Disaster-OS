@@ -1,12 +1,13 @@
 # FastAPI 核心
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
 # 圖片處理
-pillow==10.1.0
-numpy==1.24.3
+pillow==10.4.0
+numpy==1.26.4
 
-# AI 模型（HuggingFace）
-transformers==4.35.0
-torch==2.1.0
+# 如果要使用真實 AI 模型，取消下面的註解
+# 注意：PyTorch 很大，Render 免費方案可能會超時
+# transformers==4.35.0
+# torch==2.1.0
