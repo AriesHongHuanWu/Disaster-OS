@@ -7,7 +7,6 @@ python-multipart==0.0.6
 pillow==10.4.0
 numpy==1.26.4
 
-# 如果要使用真實 AI 模型，取消下面的註解
-# 注意：PyTorch 很大，Render 免費方案可能會超時
-# transformers==4.35.0
-# torch==2.1.0
+# Gemini API
+google-generativeai>=0.3.0
+google-genai>=0.1.0

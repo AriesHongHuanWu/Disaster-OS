@@ -3,408 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害影像分割 AI 系統</title>
+    <title>Disaster Insight OS by AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        :root { --primary-color: #1a73e8; --surface-color: #ffffff; --background-color: #f1f3f4; --text-primary: #202124; --text-secondary: #5f6368; --border-color: #dadce0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Roboto', 'Google Sans', sans-serif; background-color: var(--background-color); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+        .sidebar { width: 260px; background: var(--surface-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding-top: 16px; }
+        .app-title { font-family: 'Google Sans', sans-serif; font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 12px; padding: 0 24px 24px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); }
+        .nav-items { margin-top: 16px; flex-grow: 1; }
+        .nav-item { display: flex; align-items: center; gap: 16px; padding: 12px 24px; cursor: pointer; color: var(--text-secondary); font-weight: 500; border-radius: 0 24px 24px 0; margin-right: 16px; margin-bottom: 4px; }
+        .nav-item:hover { background: #f8f9fa; }
+        .nav-item.active { background: #e8f0fe; color: var(--primary-color); }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .topbar { height: 64px; background: var(--surface-color); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 24px; font-size: 18px; font-weight: 500; font-family: 'Google Sans', sans-serif; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .page-container { padding: 32px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        .card { background: var(--surface-color); border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(60,64,67,0.1); }
+        .upload-area { display: flex; flex-direction: column; align-items: center; padding: 40px; border: 2px dashed var(--border-color); border-radius: 8px; background: #fafafa; cursor: pointer; }
+        .upload-area:hover { background: #f1f3f4; }
+        #previewImage { max-height: 400px; border-radius: 8px; display: none; margin-top: 16px; width: 100%; object-fit: contain; }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }
+        .btn { background: var(--primary-color); color: white; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+        .prob-bar-container { margin-bottom: 16px; }
+        .prob-label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; font-weight: 500;}
+        .prob-track { background: #e0e0e0; height: 10px; border-radius: 5px; overflow: hidden; }
+        .prob-fill { height: 100%; border-radius: 5px; background: var(--primary-color); }
 
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
+        .tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; overflow-x: auto;}
+        .tab { padding: 12px 20px; cursor: pointer; color: var(--text-secondary); font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); background: rgba(26,115,232,0.04); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .list-item { display: flex; gap: 16px; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px; background: white; }
+        .list-icon { color: var(--primary-color); font-size: 28px; }
+        .list-text h4 { margin-bottom: 6px; font-size: 16px; }
+        .list-text p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loading { display: none; text-align: center; padding: 40px; }
+        .loading.active { display: block; }
 
-        .content {
-            padding: 40px;
-        }
-
-        .upload-section {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .upload-section h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .file-input-wrapper input[type="file"] {
-            display: none;
-        }
-
-        .file-input-label {
-            display: inline-block;
-            padding: 20px 40px;
-            background: white;
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1.1em;
-        }
-
-        .file-input-label:hover {
-            background: #e8e8ff;
-            border-color: #764ba2;
-            transform: translateY(-2px);
-        }
-
-        .preview-section {
-            margin: 20px 0;
-        }
-
-        .preview-image {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .analyze-btn {
-            padding: 15px 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .analyze-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .analyze-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 30px;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .results-section {
-            display: none;
-            margin-top: 30px;
-        }
-
-        .results-section.active {
-            display: block;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 20px;
-        }
-
-        .result-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-        }
-
-        .result-card h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .result-image {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .disaster-list {
-            list-style: none;
-        }
-
-        .disaster-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            background: white;
-            border-radius: 10px;
-            border-left: 5px solid #667eea;
-        }
-
-        .disaster-item .type {
-            font-weight: bold;
-            font-size: 1.1em;
-            color: #333;
-        }
-
-        .disaster-item .details {
-            margin-top: 5px;
-            color: #666;
-        }
-
-        .color-indicator {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-
-        .legend {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .legend h4 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        @media (max-width: 768px) {
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* Map styling */
+        #map { height: 500px; border-radius: 12px; z-index: 1; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🛰️ 災害影像分割 AI 系統</h1>
-            <p>上傳衛星圖片，AI 自動標記災害區域</p>
+    <div class="sidebar">
+        <div class="app-title"><span class="material-symbols-outlined">satellite_alt</span> Disaster OS</div>
+        <div class="nav-items">
+            <div class="nav-item active" onclick="switchPage('page-ai', this)"><span class="material-symbols-outlined">analytics</span> 智慧分析中心</div>
+            <div class="nav-item" onclick="switchPage('page-sat', this)"><span class="material-symbols-outlined">language</span> 即時衛星圖域</div>
+            <div class="nav-item" onclick="switchPage('page-history', this)"><span class="material-symbols-outlined">folder_special</span> 已儲存分析</div>
         </div>
+    </div>
 
-        <div class="content">
-            <!-- 上傳區域 -->
-            <div class="upload-section">
-                <h2>📤 上傳衛星圖片</h2>
-                <div class="file-input-wrapper">
-                    <input type="file" id="fileInput" accept="image/*">
-                    <label for="fileInput" class="file-input-label">
-                        📁 點擊選擇圖片
-                    </label>
-                </div>
-                
-                <div class="preview-section" id="previewSection" style="display: none;">
-                    <h3>原始圖片預覽：</h3>
-                    <img id="previewImage" class="preview-image" alt="預覽">
+    <div class="main-content">
+        <div class="topbar" id="topbarTitle">智慧分析中心</div>
+        <div class="page-container">
+            
+            <!-- Page: AI Analysis -->
+            <div id="page-ai" class="page active">
+                <div class="card">
+                    <h2 style="margin-bottom: 24px; font-weight: 500;">啟動區域辨識</h2>
+                    <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+                        <input type="text" id="locationInput" placeholder="輸入地點(如：太魯閣)" style="flex: 2; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 16px;">
+                        <input type="text" id="coordsInput" placeholder="經緯度座標" style="flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 16px; background: #f8f9fa;">
+                    </div>
+                    <div style="display: flex; gap: 24px; margin-bottom: 24px;">
+                        <div style="flex: 1; border: 1px solid var(--border-color); padding: 16px; border-radius: 8px;">
+                            <h3 style="margin-bottom: 12px; font-size: 16px; color: var(--text-secondary);">1. 災前參考圖 (可選)</h3>
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <button onclick="autoFetchSatellite('before')" class="btn" style="background:#fbbc04; flex:1; padding: 8px; font-size: 14px;"><span class="material-symbols-outlined" style="font-size:18px;">travel_explore</span>自動擷取</button>
+                                <button onclick="document.getElementById('beforeFileInput').click()" class="btn" style="background:#5f6368; flex:1; padding: 8px; font-size: 14px;"><span class="material-symbols-outlined" style="font-size:18px;">upload</span>手動上傳</button>
+                                <input type="file" id="beforeFileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event, 'before')">
+                            </div>
+                            <img id="previewBefore" style="width: 100%; max-height: 250px; border-radius: 8px; display: none; object-fit: contain;">
+                            <div id="beforeHint" style="padding: 40px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 32px; color: #ccc;">satellite_alt</span>
+                                <p style="color: var(--text-secondary); font-size: 14px; margin-top: 8px;">不提供則以單圖分析為主</p>
+                            </div>
+                        </div>
+                        <div style="flex: 1; border: 1px solid var(--border-color); padding: 16px; border-radius: 8px;">
+                            <h3 style="margin-bottom: 12px; font-size: 16px; color: var(--text-secondary);">2. 最新災後圖 (必填)</h3>
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <button onclick="autoFetchSatellite('after')" class="btn" style="background:#34a853; flex:1; padding: 8px; font-size: 14px;"><span class="material-symbols-outlined" style="font-size:18px;">travel_explore</span>自動擷取</button>
+                                <button onclick="document.getElementById('afterFileInput').click()" class="btn" style="background:#5f6368; flex:1; padding: 8px; font-size: 14px;"><span class="material-symbols-outlined" style="font-size:18px;">upload</span>手動上傳</button>
+                                <input type="file" id="afterFileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event, 'after')">
+                            </div>
+                            <div id="uploadArea" style="padding: 40px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 32px; color: #ccc;">add_photo_alternate</span>
+                                <p style="margin-top: 8px; font-size: 14px; color: var(--text-secondary);">請提供最新災情圖片</p>
+                            </div>
+                            <img id="previewImage" style="width: 100%; max-height: 250px; border-radius: 8px; display: none; object-fit: contain;">
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <button id="analyzeBtn" class="btn" disabled><span class="material-symbols-outlined">psychology</span>AI 深度比對分析</button>
+                    </div>
                 </div>
 
-                <button id="analyzeBtn" class="analyze-btn" disabled>
-                    🤖 開始 AI 分析
-                </button>
+                <div class="loading" id="loading">
+                    <span class="material-symbols-outlined" style="font-size: 40px; color: var(--primary-color); animation: spin 1s linear infinite;">refresh</span>
+                    <h3 style="margin-top: 16px;">AI 正在多維度比對災情特徵...</h3>
+                    <p style="color: var(--text-secondary); margin-top: 8px;">包含機率推算、災民物資估算及二次災害風險等，約需 10-15 秒</p>
+                </div>
+
+                <div id="resultsSection" style="display:none;">
+                    <div class="card" style="display: flex; gap: 32px; align-items: flex-start;">
+                        <div style="flex: 1.5;"><img id="resImg" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+                        <div style="flex: 1; padding: 16px 0;">
+                            <h3 style="margin-bottom: 24px; display: flex; align-items:center; gap:8px"><span class="material-symbols-outlined">donut_large</span> 災因判定機率推算</h3>
+                            <div id="probContainer"></div>
+                            <div style="background: #e6f4ea; padding: 20px; border-radius: 8px; margin-top: 32px;">
+                                <h4 style="color: #137333; margin-bottom: 8px;">系統保守估計恢復成本</h4>
+                                <h1 style="color: #137333; font-family: 'Google Sans'; font-size: 28px;" id="costTxt"></h1>
+                            </div>
+                            <button class="btn" style="margin-top: 24px; width: 100%; justify-content:center; padding: 14px;" onclick="saveHistory()">
+                                <span class="material-symbols-outlined">save</span> 儲存此分析報告與圖資
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="tabs">
+                            <div class="tab active" onclick="switchTab('tab-infra', this)">🏗️ 基建狀況</div>
+                            <div class="tab" onclick="switchTab('tab-warning', this)">⚠️ 二次災害風險</div>
+                            <div class="tab" onclick="switchTab('tab-rescue', this)">🚁 物資空投與避難</div>
+                            <div class="tab" onclick="switchTab('tab-resource', this)">📉 災民與資源估算</div>
+                            <div class="tab" onclick="switchTab('tab-plan', this)">📅 重建復原計畫</div>
+                        </div>
+                        <div id="tab-infra" class="tab-content active"></div>
+                        <div id="tab-warning" class="tab-content"></div>
+                        <div id="tab-rescue" class="tab-content"></div>
+                        <div id="tab-resource" class="tab-content"></div>
+                        <div id="tab-plan" class="tab-content"></div>
+                    </div>
+                </div>
             </div>
 
-            <!-- 載入中 -->
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <h3>AI 正在分析圖片...</h3>
-                <p>請稍候，這可能需要幾秒鐘</p>
-            </div>
-
-            <!-- 結果區域 -->
-            <div class="results-section" id="resultsSection">
-                <h2 style="color: #667eea; margin-bottom: 20px;">📊 AI 分析結果</h2>
-                
-                <div class="results-grid">
-                    <!-- 分割結果圖 -->
-                    <div class="result-card">
-                        <h3>🎨 災害標記圖</h3>
-                        <img id="segmentedImage" class="result-image" alt="分割結果">
-                    </div>
-
-                    <!-- 災害區域列表 -->
-                    <div class="result-card">
-                        <h3>📋 檢測到的災害區域</h3>
-                        <ul class="disaster-list" id="disasterList"></ul>
-                    </div>
-                </div>
-
-                <!-- 圖例 -->
-                <div class="legend">
-                    <h4>🎨 顏色圖例</h4>
-                    <div class="legend-item">
-                        <span class="color-indicator" style="background: blue;"></span>
-                        <span>藍色 = 淹水區域</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="color-indicator" style="background: red;"></span>
-                        <span>紅色 = 建築受損</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="color-indicator" style="background: yellow;"></span>
-                        <span>黃色 = 植被破壞</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="color-indicator" style="background: orange;"></span>
-                        <span>橙色 = 道路阻斷</span>
-                    </div>
+            <!-- Page: Satellite -->
+            <div id="page-sat" class="page">
+                <div class="card">
+                    <h2 style="margin-bottom: 16px;">即時衛星圖資查詢系統 (Leaflet Interactive)</h2>
+                    <p style="margin-bottom: 16px; color: var(--text-secondary);">在地圖上點擊可取得精準座標，並直接帶回智慧分析中心進行解析。</p>
+                    <div id="map"></div>
                 </div>
             </div>
+
+            <!-- Page: History -->
+            <div id="page-history" class="page">
+                <div class="card">
+                    <h2 style="margin-bottom: 24px;">本地端儲存之分析報告</h2>
+                    <button class="btn" style="margin-bottom: 24px; background: #ea4335;" onclick="clearHistory()">
+                        <span class="material-symbols-outlined">delete</span> 清除所有紀錄
+                    </button>
+                    <div id="historyList"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const previewSection = document.getElementById('previewSection');
-        const previewImage = document.getElementById('previewImage');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const loading = document.getElementById('loading');
-        const resultsSection = document.getElementById('resultsSection');
-        const segmentedImage = document.getElementById('segmentedImage');
-        const disasterList = document.getElementById('disasterList');
+        let currentAnalysis = null;
+        let map;
+        let activeFile = null;
 
-        let selectedFile = null;
+        function switchPage(pageId, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            if(element) {
+                element.classList.add('active');
+                document.getElementById('topbarTitle').innerText = element.innerText;
+            }
+            if(pageId === 'page-history') loadHistory();
+            if(pageId === 'page-sat' && !map) initMap();
+        }
 
-        // 文件選擇
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                selectedFile = file;
-                
-                // 顯示預覽
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    previewImage.src = e.target.result;
-                    previewSection.style.display = 'block';
-                    analyzeBtn.disabled = false;
-                };
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(element) element.classList.add('active');
+        }
+
+        function initMap() {
+            setTimeout(() => {
+                map = L.map('map').setView([23.6978, 120.9605], 7); // Center roughly on Taiwan
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19, attribution: 'Tiles © Esri'
+                }).addTo(map);
+                map.on('click', function(e) {
+                    let lat = e.latlng.lat.toFixed(4);
+                    let lng = e.latlng.lng.toFixed(4);
+                    if(confirm(`選中座標 ${lat}, ${lng}\n要將此座標帶回智慧分析中心並上傳圖資進行分析嗎？`)){
+                        document.getElementById('coordsInput').value = `${lat}, ${lng}`;
+                        switchPage('page-ai', document.querySelector('.nav-item.active'));
+                    }
+                });
+            }, 100);
+        }
+
+        let beforeFile = null;
+
+        function handleFileUpload(e, type) {
+            let file = e.target.files[0];
+            if(file) {
+                let reader = new FileReader();
+                reader.onload = function(evt) {
+                    if (type === 'before') {
+                        beforeFile = file;
+                        document.getElementById('previewBefore').src = evt.target.result;
+                        document.getElementById('previewBefore').style.display = 'block';
+                        document.getElementById('beforeHint').style.display = 'none';
+                    } else {
+                        activeFile = file;
+                        document.getElementById('previewImage').src = evt.target.result;
+                        document.getElementById('previewImage').style.display = 'block';
+                        document.getElementById('uploadArea').style.display = 'none';
+                    }
+                    checkAnalyzeBtn();
+                }
                 reader.readAsDataURL(file);
             }
-        });
+        }
 
-        // 分析按鈕
-        analyzeBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
+        function checkAnalyzeBtn() {
+            if (activeFile) {
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
 
-            // 顯示載入狀態
-            loading.classList.add('active');
-            resultsSection.classList.remove('active');
-            analyzeBtn.disabled = true;
+        async function autoFetchSatellite(type) {
+            let loc = document.getElementById('locationInput').value;
+            if(!loc) { alert("請先輸入地點！"); return; }
+            document.getElementById('analyzeBtn').innerHTML = "衛星連線擷取中...";
+            try {
+                let nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}`);
+                let nomData = await nomRes.json();
+                if(nomData.length === 0) { 
+                    alert("⚠️ 地理搜尋 API 找不到該地點的座標！\n\n解決方法：\n1. 請輸入更完整的地址（例如加上「台灣、縣市」）\n2. 或者切換到【即時衛星圖域】分頁，直接在地圖上點擊該點！"); 
+                    document.getElementById('analyzeBtn').innerHTML = '<span class="material-symbols-outlined">psychology</span>AI 深度比對分析';
+                    return; 
+                }
+                let lat = parseFloat(nomData[0].lat);
+                let lon = parseFloat(nomData[0].lon);
+                document.getElementById('coordsInput').value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                
+                let minLon = lon - 0.01; let maxLon = lon + 0.01;
+                let minLat = lat - 0.01; let maxLat = lat + 0.01;
+                let imgUrl = `https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export?bbox=${minLon},${minLat},${maxLon},${maxLat}&bboxSR=4326&imageSR=4326&format=jpg&f=image&size=800,800`;
+                
+                let imgRes = await fetch(imgUrl);
+                if (!imgRes.ok) throw new Error("衛星伺服器回應錯誤: " + imgRes.status);
+                let blob = await imgRes.blob();
+                
+                if (type === 'before') {
+                    beforeFile = new File([blob], "satellite_before.jpg", { type: "image/jpeg" });
+                    document.getElementById('previewBefore').src = URL.createObjectURL(blob);
+                    document.getElementById('previewBefore').style.display = 'block';
+                    document.getElementById('beforeHint').style.display = 'none';
+                } else {
+                    activeFile = new File([blob], "satellite_after.jpg", { type: "image/jpeg" });
+                    document.getElementById('previewImage').src = URL.createObjectURL(blob);
+                    document.getElementById('previewImage').style.display = 'block';
+                    document.getElementById('uploadArea').style.display = 'none';
+                }
+                checkAnalyzeBtn();
+            } catch(e) {
+                alert("擷取衛星圖失敗：" + e);
+            }
+        }
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            if(!activeFile && !beforeFile) { alert("請至少提供一張圖片！"); return; }
+            let location = document.getElementById('locationInput').value || '未提供';
+            let coords = document.getElementById('coordsInput').value || '未知';
+            
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
 
-            // 準備表單數據
-            const formData = new FormData();
-            formData.append('file', selectedFile);
+            let fd = new FormData();
+            if(activeFile) fd.append('file', activeFile);
+            if(beforeFile) fd.append('file_before', beforeFile);
+            fd.append('location', location);
+            fd.append('coordinates', coords);
 
             try {
-                // 發送到後端
-                const response = await fetch('/api/segment', {
-                    method: 'POST',
-                    body: formData
-                });
+                let res = await fetch('/api/segment', { method: 'POST', body: fd });
+                let data = await res.json();
+                if(data.success){
+                    currentAnalysis = { time: new Date().toLocaleString(), data: data, loc: location, imgBase64: data.segmented_image, coords: coords };
+                    renderResults(data);
+                } else alert(data.message);
+            } catch(e) { alert("無法連線到伺服器"); }
 
-                const data = await response.json();
-
-                if (data.success) {
-                    // 顯示分割結果圖
-                    segmentedImage.src = data.segmented_image;
-
-                    // 顯示災害區域列表
-                    disasterList.innerHTML = data.disaster_areas.map(area => `
-                        <li class="disaster-item">
-                            <div class="type">
-                                ${getColorIndicator(area.color)}
-                                ${area.type}
-                            </div>
-                            <div class="details">
-                                顏色: ${area.color} | 
-                                覆蓋率: ${area.percentage}%
-                            </div>
-                        </li>
-                    `).join('');
-
-                    // 顯示結果
-                    resultsSection.classList.add('active');
-                } else {
-                    alert('分析失敗，請重試');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('發生錯誤: ' + error.message);
-            } finally {
-                loading.classList.remove('active');
-                analyzeBtn.disabled = false;
-            }
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('analyzeBtn').disabled = false;
+            document.getElementById('analyzeBtn').innerHTML = '<span class="material-symbols-outlined">psychology</span>重新分析';
         });
 
-        function getColorIndicator(colorName) {
-            const colorMap = {
-                '藍色': 'blue',
-                '紅色': 'red',
-                '黃色': 'yellow',
-                '橙色': 'orange',
-                '無': 'gray'
-            };
-            const color = colorMap[colorName] || 'gray';
-            return `<span class="color-indicator" style="background: ${color};"></span>`;
+        function renderResults(data) {
+            document.getElementById('resImg').src = data.segmented_image;
+            document.getElementById('costTxt').innerText = data.estimated_cost;
+            document.getElementById('resultsSection').style.display = 'block';
+
+            let colors = ['#ea4335', '#fbbc04', '#34a853', '#4285f4'];
+            document.getElementById('probContainer').innerHTML = data.disaster_probabilities.map((p, i) => `
+                <div class="prob-bar-container">
+                    <div class="prob-label"><span>${p.cause}</span><span>${p.percentage}%</span></div>
+                    <div class="prob-track"><div class="prob-fill" style="width: ${p.percentage}%; background: ${colors[i%colors.length]}"></div></div>
+                </div>`).join('');
+
+            // Infra
+            document.getElementById('tab-infra').innerHTML = (data.infrastructure_analysis || []).map(i => `
+                <div class="list-item"><div class="list-icon"><span class="material-symbols-outlined">${i.icon || 'domain_disabled'}</span></div>
+                <div class="list-text"><h4>${i.title}</h4><p>${i.description}</p></div></div>`).join('') || '<p>無基礎設施損壞資料</p>';
+
+            // Warnings
+            document.getElementById('tab-warning').innerHTML = (data.secondary_disasters || []).map(i => `
+                <div class="list-item" style="border-color: #fce8e6; background: #fce8e6;"><div class="list-icon"><span class="material-symbols-outlined" style="color:#ea4335">warning</span></div>
+                <div class="list-text"><h4>${i.warning}</h4><p style="color:#ea4335; font-weight:bold">風險發生機率: ${i.probability}%</p></div></div>`).join('') || '<p>未偵測到二次風險</p>';
+
+            // Rescue
+            let rescueHTML = `<div style="padding: 16px; background: #e8f0fe; border-radius: 8px; margin-bottom: 16px; color: #1967d2;"><span class="material-symbols-outlined">lightbulb</span> AI 創新計算：建議之物資空投點與避難區</div>`;
+            rescueHTML += (data.rescue_innovations || []).map(i => `
+                <div class="list-item"><div class="list-icon"><span class="material-symbols-outlined">${i.icon || 'flight_takeoff'}</span></div>
+                <div class="list-text"><h4>[${i.type}]</h4><p>${i.description}</p></div></div>`).join('');
+            document.getElementById('tab-rescue').innerHTML = rescueHTML;
+
+            // Resource estimating
+            document.getElementById('tab-resource').innerHTML = (data.resource_estimating || []).map(r => `
+                <div class="list-item"><div class="list-icon"><span class="material-symbols-outlined" style="color:#fbbc04">inventory_2</span></div>
+                <div class="list-text"><h4>${r.item} - 數量: ${r.quantity}</h4><p>急迫程度：${r.urgency}</p></div></div>`).join('') || '<p>無估算資料</p>';
+
+            // Plan
+            document.getElementById('tab-plan').innerHTML = (data.recovery_plan || []).map(p => `
+                <div class="list-item"><div class="list-icon"><span class="material-symbols-outlined" style="color: #34a853">task_alt</span></div>
+                <div class="list-text"><h4>[${p.step}] ${p.title}</h4><p>${p.description}</p></div></div>`).join('');
+        }
+
+        function saveHistory() {
+            if(!currentAnalysis) return;
+            let hist = JSON.parse(localStorage.getItem('disaster_history') || '[]');
+            hist.unshift(currentAnalysis);
+            localStorage.setItem('disaster_history', JSON.stringify(hist));
+            alert('✅ 報告及影像已成功儲存至「已儲存分析」分頁！');
+        }
+
+        function loadHistory() {
+            let hist = JSON.parse(localStorage.getItem('disaster_history') || '[]');
+            let html = hist.length === 0 ? '<div class="list-item"><p style="color:var(--text-secondary)">尚無歷史紀錄。</p></div>' : '';
+            hist.forEach((h, index) => {
+                html += `
+                <div class="list-item" style="display:flex; align-items:center; gap: 24px; padding: 24px;">
+                    <img src="${h.imgBase64}" style="width: 150px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;">
+                    <div class="list-text" style="flex:1">
+                        <h4 style="font-size: 18px; margin-bottom: 8px;">${h.loc} (座標: ${h.coords})</h4>
+                        <p style="margin-bottom: 8px;">儲存時間：${h.time}</p>
+                        <p style="color: #137333; font-weight: 500;">AI預估恢復成本：${h.data.estimated_cost}</p>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('historyList').innerHTML = html;
+        }
+
+        function clearHistory() {
+            if(confirm("確定要清除所有已儲存的報表與圖資嗎？")) {
+                localStorage.removeItem('disaster_history');
+                loadHistory();
+            }
         }
     </script>
 </body>
