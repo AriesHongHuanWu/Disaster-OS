@@ -10,8 +10,9 @@ import google.generativeai as genai
 
 app = FastAPI(title="Disaster Insight OS")
 
-# 設定 Google Gemini API Key (優先讀取環境變數，以利上線部署)
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyCMEL8poBH48Z7UrSSGQNxbRgB93m4jE_k")
+# 設定 Google Gemini API Key (由環境變數提供，切勿寫死在程式碼中)
+# Read the Gemini API key from the environment. Never hardcode a key here.
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-3-flash-preview')
 
